@@ -61,3 +61,7 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# Claude assistant files
+AGENTS.md
+CLAUDE.md

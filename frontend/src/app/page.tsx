@@ -1,65 +1,162 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
+import Logo from "@/components/Logo";
+
+export default function SplashScreen() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const t = setTimeout(() => router.push("/menu"), 3800);
+    return () => clearTimeout(t);
+  }, [router]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div
+      className="relative flex h-full min-h-screen items-center justify-center overflow-hidden"
+      style={{ background: "var(--bg-void)" }}
+    >
+      {/* ── Circuit grid that fades in ── */}
+      <motion.div
+        className="absolute inset-0"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 2, delay: 0.3 }}
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(29,233,214,0.06) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(29,233,214,0.06) 1px, transparent 1px)
+          `,
+          backgroundSize: "52px 52px",
+        }}
+      />
+
+      {/* ── Radial board atmosphere ── */}
+      <motion.div
+        className="absolute inset-0"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 1.8, delay: 0.5 }}
+        style={{
+          background:
+            "radial-gradient(ellipse 80% 70% at 50% 50%, rgba(29,233,214,0.07) 0%, rgba(212,168,67,0.03) 40%, transparent 70%)",
+        }}
+      />
+
+      {/* ── Outer pulse rings ── */}
+      {[320, 480, 640].map((size, i) => (
+        <motion.div
+          key={size}
+          className="absolute rounded-full border"
+          style={{
+            width: size,
+            height: size,
+            borderColor: i === 0 ? "rgba(212,168,67,0.25)" : "rgba(29,233,214,0.12)",
+          }}
+          initial={{ opacity: 0, scale: 0.6 }}
+          animate={{ opacity: [0, 0.7, 0.3], scale: 1 }}
+          transition={{
+            delay: 0.4 + i * 0.25,
+            duration: 1.2,
+            ease: "easeOut",
+          }}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+      ))}
+
+      {/* ── Breathing glow on rings after reveal ── */}
+      {[320, 480].map((size, i) => (
+        <motion.div
+          key={`pulse-${size}`}
+          className="absolute rounded-full border"
+          style={{
+            width: size,
+            height: size,
+            borderColor:
+              i === 0 ? "rgba(212,168,67,0.20)" : "rgba(29,233,214,0.10)",
+          }}
+          animate={{ scale: [1, 1.025, 1], opacity: [0.5, 1, 0.5] }}
+          transition={{
+            delay: 1.8 + i * 0.3,
+            duration: 3,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
+
+      {/* ── Logo cinematic reveal ── */}
+      <motion.div
+        className="relative z-10 flex flex-col items-center gap-10"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 1.1, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <Logo size="xl" animate />
+
+        {/* Tagline */}
+        <motion.p
+          className="text-[11px] uppercase tracking-[0.45em] text-center max-w-xs leading-relaxed"
+          style={{ color: "var(--text-muted)" }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.0, duration: 1 }}
+        >
+          High Interaction Simulation of<br />
+          Leadership · Negotiation · Psychology
+        </motion.p>
+
+        {/* Progress bar — teal glow track */}
+        <motion.div
+          className="relative w-56 h-px overflow-hidden"
+          style={{ background: "rgba(29,233,214,0.10)" }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.2 }}
+        >
+          <motion.div
+            className="absolute inset-y-0 left-0"
+            style={{
+              background:
+                "linear-gradient(90deg, transparent, #1de9d6, #d4a843, #1de9d6)",
+              boxShadow: "0 0 8px rgba(29,233,214,0.8)",
+            }}
+            initial={{ width: "0%" }}
+            animate={{ width: "100%" }}
+            transition={{ delay: 1.3, duration: 2.2, ease: "easeInOut" }}
+          />
+        </motion.div>
+
+        {/* Status label */}
+        <motion.p
+          className="text-[10px] uppercase tracking-[0.4em]"
+          style={{ color: "var(--teal-dark)", marginTop: -24 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0, 1, 0.6] }}
+          transition={{ delay: 1.4, duration: 1.8, repeat: 1 }}
+        >
+          Initializing command session…
+        </motion.p>
+      </motion.div>
+
+      {/* Top chrome bar */}
+      <div
+        className="absolute top-0 left-0 right-0 h-px"
+        style={{
+          background:
+            "linear-gradient(90deg, transparent, rgba(29,233,214,0.6) 40%, rgba(212,168,67,0.5) 60%, transparent)",
+        }}
+      />
+
+      {/* Fade to bg-deep before redirect */}
+      <motion.div
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: "var(--bg-deep)" }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 3.2, duration: 0.6 }}
+      />
     </div>
   );
 }
