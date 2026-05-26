@@ -6,9 +6,12 @@ import apiRoutes from "./routes/index";
 const app = express();
 
 // ── CORS ───────────────────────────────────────────────────────────────────
-const allowedOrigins = [
-  process.env.FRONTEND_URL ?? "http://localhost:3000",
-];
+// FRONTEND_URL may be a comma-separated list to support multiple origins
+// e.g.  FRONTEND_URL=https://modernmint.vercel.app,http://localhost:3000
+const allowedOrigins = (process.env.FRONTEND_URL ?? "http://localhost:3000")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
 
 app.use(
   cors({

@@ -3,8 +3,9 @@
  * Base URL is read from NEXT_PUBLIC_API_URL (set in .env.local).
  */
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000";
+const BASE_URL = (
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"
+).replace(/\/$/, "");
 
 // ── Generic fetch wrapper ──────────────────────────────────────────────────
 
