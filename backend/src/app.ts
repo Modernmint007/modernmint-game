@@ -20,7 +20,8 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error(`CORS policy: origin ${origin} is not allowed.`));
+        const err = Object.assign(new Error(`CORS policy: origin ${origin} is not allowed.`), { status: 403 });
+        callback(err);
       }
     },
     credentials: true,

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { motion, type Variants } from "framer-motion";
 import Logo from "@/components/Logo";
 import PageBackground from "@/components/PageBackground";
+import { isAuthenticated } from "@/lib/auth";
 
 /* ── Menu item definitions ─────────────────────────────────────────────── */
 const primaryActions = [
@@ -127,9 +128,12 @@ export default function MainMenu() {
   const router = useRouter();
 
   function handle(action: string) {
-    if (action === "auth")     router.push("/login");
+    if (action === "auth") {
+      // Skip login page if the user already has a valid session
+      router.push(isAuthenticated() ? "/lobby" : "/login");
+    }
     if (action === "tutorial") router.push("/tutorial");
-    if (action === "quit")     typeof window !== "undefined" && window.close();
+    if (action === "quit" && typeof window !== "undefined") window.close();
   }
 
   return (

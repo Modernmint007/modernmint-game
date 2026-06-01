@@ -30,7 +30,7 @@ export default function LoginPage() {
     try {
       const result = await authApi.login({ email: data.email, password: data.password });
       setSession(result.token, result.user);
-      router.push("/menu");
+      router.push("/lobby");
     } catch (err) {
       if (err instanceof ApiError) {
         setServerError(err.message);
