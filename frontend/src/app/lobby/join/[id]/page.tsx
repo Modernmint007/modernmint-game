@@ -6,23 +6,44 @@ import { motion } from "framer-motion";
 import PageBackground from "@/components/PageBackground";
 import LobbyNavBar   from "@/components/lobby/LobbyNavBar";
 import RoleCard       from "@/components/lobby/RoleCard";
-import AvatarGrid     from "@/components/lobby/AvatarGrid";
 import Button         from "@/components/ui/Button";
-import Input          from "@/components/ui/Input";
+import { getUser }    from "@/lib/auth";
 import { fetchRoom, joinRoom, joinRoomWithPassword } from "@/lib/lobby/api";
 import { ApiError } from "@/lib/api";
 import type { GameRoom, GameMode, PlayerRole } from "@/lib/lobby/types";
 import { useAuthGuard } from "@/lib/useAuthGuard";
 
-// ── Divider ───────────────────────────────────────────────────────────────
-function Divider() {
+// ── Role-specific avatars (external Modern Mint artwork) ────────────────────
+// Founders pick from 4 avatars, investors from 2. The numeric `id` is what we
+// send to the backend as `avatar_id` (avatar-selection logic preserved).
+const FOUNDER_AVATARS = [
+  { id: 1, src: "https://modernmintgame.com/cdn/shop/files/01.png?v=1772091663&width=2000" },
+  { id: 2, src: "https://modernmintgame.com/cdn/shop/files/03.png?v=1772091662&width=2000" },
+  { id: 3, src: "https://modernmintgame.com/cdn/shop/files/02.png?v=1772091663&width=2000" },
+  { id: 4, src: "https://modernmintgame.com/cdn/shop/files/05.png?v=1772091663&width=2000" },
+];
+const INVESTOR_AVATARS = [
+  { id: 5, src: "https://modernmintgame.com/cdn/shop/files/04.png?v=1772091663&width=2000" },
+  { id: 6, src: "https://modernmintgame.com/cdn/shop/files/06.png?v=1772091663&width=2000" },
+];
+
+function avatarsForRole(role: PlayerRole) {
+  return role === "founder" ? FOUNDER_AVATARS : INVESTOR_AVATARS;
+}
+
+// ── Section label — gold pill ──────────────────────────────────────────────
+function PanelLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="h-px my-5"
+    <span
+      className="text-[10px] font-black uppercase tracking-[0.3em] px-4 py-1.5 rounded-full"
       style={{
-        background:
-          "linear-gradient(90deg, transparent, rgba(29,233,214,0.3) 30%, rgba(212,168,67,0.2) 70%, transparent)",
+        color: "var(--gold)",
+        border: "1px solid rgba(222,186,98,0.45)",
+        background: "rgba(10,40,22,0.45)",
       }}
-    />
+    >
+      {children}
+    </span>
   );
 }
 
@@ -40,14 +61,19 @@ export default function JoinGamePage({
   const [room,      setRoom]      = useState<GameRoom | null>(null);
   const [loading,   setLoading]   = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
-  const [needsPassword, setNeedsPassword] = useState(false);
-  const [roomPassword, setRoomPassword]   = useState("");
 
   const [role,      setRole]      = useState<PlayerRole>("founder");
   const [name,      setName]      = useState("");
-  const [avatarId,  setAvatarId]  = useState<number | null>(1);
+  const [avatarId,  setAvatarId]  = useState<number | null>(FOUNDER_AVATARS[0].id);
   const [starting,  setStarting]  = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
+
+  // Display name comes from the signed-in user (no visible input, per Figma).
+  useEffect(() => {
+    const user = getUser();
+    if (user?.username) setName(user.username);
+    else if (user?.email) setName(user.email);
+  }, []);
 
   // Fetch the room on mount
   useEffect(() => {
@@ -57,10 +83,6 @@ export default function JoinGamePage({
       try {
         const result = await fetchRoom(id);
         setRoom(result);
-        // If password-protected, flag it so we can show the password input
-        if (result.privacy === "password") {
-          setNeedsPassword(true);
-        }
       } catch (err) {
         setFetchError(
           err instanceof ApiError ? err.message : "Failed to load room."
@@ -79,18 +101,28 @@ export default function JoinGamePage({
     full:     "Full Mode",
   };
 
+  // Switching role immediately swaps the avatar set and selects its first avatar.
+  function selectRole(r: PlayerRole) {
+    setRole(r);
+    setAvatarId(avatarsForRole(r)[0].id);
+  }
+
   async function handleStart() {
     if (!name.trim() || !avatarId) return;
     setJoinError(null);
     setStarting(true);
 
     try {
-      if (needsPassword) {
+      // Password rooms are already authenticated in the lobby — reuse the password
+      // that was entered there (stored in sessionStorage), no second prompt here.
+      if (room?.privacy === "password") {
+        const storedPw =
+          (typeof window !== "undefined" && sessionStorage.getItem(`mm_room_pw_${id}`)) || "";
         await joinRoomWithPassword(id, {
           role,
           avatar_id:    avatarId,
           display_name: name.trim(),
-          password:     roomPassword,
+          password:     storedPw,
         });
       } else {
         await joinRoom(id, {
@@ -115,7 +147,7 @@ export default function JoinGamePage({
   if (loading) {
     return (
       <div className="relative flex flex-col h-screen overflow-hidden">
-        <PageBackground />
+        <PageBackground variant="lobby" />
         <LobbyNavBar title="Join Game" />
         <div className="flex-1 flex items-center justify-center">
           <span
@@ -133,7 +165,7 @@ export default function JoinGamePage({
   if (fetchError || !room) {
     return (
       <div className="relative flex flex-col h-screen overflow-hidden">
-        <PageBackground />
+        <PageBackground variant="lobby" />
         <LobbyNavBar title="Join Game" />
         <div className="flex-1 flex flex-col items-center justify-center gap-4">
           <p
@@ -150,183 +182,157 @@ export default function JoinGamePage({
     );
   }
 
+  const avatars = avatarsForRole(role);
+
   return (
     <div className="relative flex flex-col h-screen overflow-hidden">
-      <PageBackground />
+      <PageBackground variant="lobby" />
       <LobbyNavBar title="Join Game" />
 
-      {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto flex items-start justify-center px-4 py-6">
+      {/* Body — panel height-capped to the viewport; inner content scrolls only if tight */}
+      <div className="flex-1 min-h-0 px-6 py-3 flex items-center justify-center">
         <motion.div
-          className="w-full max-w-2xl"
-          initial={{ opacity: 0, y: 20 }}
+          className="w-full max-w-[1060px] max-h-full flex"
+          initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
         >
-          {/* ── Game info header ── */}
+          {/* ── Single gold-bordered floating panel ── */}
           <div
-            className="rounded-xl p-5 mb-6"
+            className="relative overflow-hidden rounded-[28px] flex flex-col w-full max-h-full"
             style={{
-              background: "rgba(6,20,26,0.85)",
-              border: "1px solid rgba(29,233,214,0.18)",
-              boxShadow: "0 8px 40px rgba(0,0,0,0.5)",
-              backdropFilter: "blur(20px)",
+              background: "rgba(16,46,30,0.26)",
+              border: "1.5px solid rgba(222,186,98,0.70)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              boxShadow:
+                "0 12px 60px rgba(0,0,0,0.40), 0 0 38px rgba(222,186,98,0.18), inset 0 1px 0 rgba(222,186,98,0.22)",
             }}
           >
-            <p
-              className="text-[9px] font-black uppercase tracking-[0.45em] mb-1"
-              style={{ color: "var(--text-muted)" }}
-            >
-              You Are Joining
-            </p>
-            <h1
-              className="text-xl font-black uppercase tracking-[0.12em] mb-3"
-              style={{ color: "#1de9d6" }}
-            >
-              {room.name}
-            </h1>
+            {/* Scrollable content — scrolls internally only when vertical space is tight.
+                overflow-x-hidden prevents a stray horizontal scrollbar (the green strip). */}
+            <div className="min-h-0 overflow-y-auto overflow-x-hidden px-10 py-9">
+            <div className="grid grid-cols-[1fr_auto_300px] gap-10 items-stretch">
+              {/* ── LEFT: title + meta + role cards ── */}
+              <div className="flex flex-col">
+                <div className="mb-4">
+                  <p
+                    className="text-[9px] font-bold uppercase tracking-[0.45em] mb-1 text-center"
+                    style={{ color: "rgba(200,220,210,0.50)" }}
+                  >
+                    You are joining
+                  </p>
+                  {/* Large room title — always the ROOM's name */}
+                  <h1
+                    className="font-black uppercase text-center break-words"
+                    style={{
+                      fontSize: "clamp(24px, 2.6vw, 40px)",
+                      color: "#eef3ee",
+                      letterSpacing: "0.06em",
+                      textShadow: "0 0 30px rgba(34,196,98,0.25)",
+                      lineHeight: 1.05,
+                    }}
+                  >
+                    {room.name || "Game Room"}
+                  </h1>
 
-            {/* Meta pills */}
-            <div className="flex items-center gap-3 flex-wrap">
-              <span
-                className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full"
-                style={{
-                  background: "rgba(29,233,214,0.08)",
-                  border: "1px solid rgba(29,233,214,0.20)",
-                  color: "#1de9d6",
-                }}
-              >
-                ⏱ {modeLabel[room.mode]}
-              </span>
-              {room.privacy === "password" && (
-                <span
-                  className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full"
-                  style={{
-                    background: "rgba(212,168,67,0.08)",
-                    border: "1px solid rgba(212,168,67,0.25)",
-                    color: "#d4a843",
-                  }}
-                >
-                  🔒 Password protected
-                </span>
-              )}
-              {room.privacy === "open" && (
-                <span
-                  className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full"
-                  style={{
-                    background: "rgba(42,255,122,0.06)",
-                    border: "1px solid rgba(42,255,122,0.20)",
-                    color: "#2aff7a",
-                  }}
-                >
-                  ✓ Open Room
-                </span>
-              )}
-            </div>
-          </div>
+                  {/* Small room metadata */}
+                  <div
+                    className="flex items-center justify-center gap-2 text-[11px] mt-2"
+                    style={{ color: "rgba(200,220,210,0.55)" }}
+                  >
+                    <span>⏱ {modeLabel[room.mode]}</span>
+                    {(room.privacy === "password" || room.privacy === "closed") && (
+                      <>
+                        <span style={{ color: "rgba(200,220,210,0.25)" }}>|</span>
+                        <span>
+                          {room.privacy === "password" ? "🔒 Password Protected" : "🔒 Invite Only"}
+                        </span>
+                      </>
+                    )}
+                    {room.privacy === "open" && (
+                      <>
+                        <span style={{ color: "rgba(200,220,210,0.25)" }}>|</span>
+                        <span style={{ color: "#22c462" }}>✓ Open Room</span>
+                      </>
+                    )}
+                  </div>
+                </div>
 
-          {/* ── Main content grid ── */}
-          <div
-            className="rounded-xl p-6"
-            style={{
-              background: "rgba(6,20,26,0.85)",
-              border: "1px solid rgba(29,233,214,0.14)",
-              backdropFilter: "blur(20px)",
-            }}
-          >
-            {/* Section label */}
-            <p
-              className="text-[9px] font-black uppercase tracking-[0.4em] mb-4"
-              style={{ color: "var(--gold)" }}
-            >
-              ◈ Choose Your Role
-            </p>
-
-            <div className="flex flex-col md:flex-row gap-6">
-              {/* ── Left: role cards ── */}
-              <div className="flex gap-4 flex-1">
-                <RoleCard role="founder"  selected={role === "founder"}  onSelect={() => setRole("founder")}  />
-                <RoleCard role="investor" selected={role === "investor"} onSelect={() => setRole("investor")} />
+                {/* Two large role cards */}
+                <div className="grid grid-cols-2 gap-6 flex-1">
+                  {/* role cards stretch to fill the left column for prominence */}
+                  <RoleCard role="founder"  selected={role === "founder"}  onSelect={() => selectRole("founder")}  />
+                  <RoleCard role="investor" selected={role === "investor"} onSelect={() => selectRole("investor")} />
+                </div>
               </div>
 
-              {/* ── Right: name + avatar ── */}
-              <div className="flex flex-col gap-5 md:w-56">
-                <Input
-                  label="Name"
-                  placeholder="Enter your name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
+              {/* Vertical divider */}
+              <div className="w-px self-stretch" style={{ background: "rgba(222,186,98,0.22)" }} />
 
-                {/* Password field for password-protected rooms */}
-                {needsPassword && (
-                  <Input
-                    label="Room Password"
-                    type="password"
-                    placeholder="Enter room password"
-                    value={roomPassword}
-                    onChange={(e) => setRoomPassword(e.target.value)}
-                  />
-                )}
+              {/* ── RIGHT: avatar selection + Join ── */}
+              <div className="flex flex-col items-center">
+                <div className="mb-5">
+                  <PanelLabel>Choose Your Avatar</PanelLabel>
+                </div>
 
-                <div>
-                  <p
-                    className="text-[9px] font-black uppercase tracking-[0.35em] mb-3"
-                    style={{ color: "var(--gold)" }}
+                {/* Role-specific avatar grid */}
+                <div className="grid grid-cols-2 gap-6">
+                  {avatars.map((a) => {
+                    const active = avatarId === a.id;
+                    return (
+                      <button
+                        key={a.id}
+                        onClick={() => setAvatarId(a.id)}
+                        className="rounded-full overflow-hidden cursor-pointer transition-all"
+                        style={{
+                          width: 112,
+                          height: 112,
+                          border: `3px solid ${active ? "var(--gold)" : "rgba(222,186,98,0.30)"}`,
+                          boxShadow: active
+                            ? "0 0 30px rgba(222,186,98,0.65), 0 0 0 4px rgba(222,186,98,0.20)"
+                            : "none",
+                          transform: active ? "scale(1.06)" : "scale(1)",
+                        }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={a.src} alt="Avatar" className="w-full h-full object-cover" />
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Join — directly beneath the avatar section, centered */}
+                <div className="mt-auto pt-8 w-full flex flex-col items-center gap-2">
+                  <Button
+                    size="lg"
+                    loading={starting}
+                    disabled={!name.trim() || !avatarId}
+                    onClick={handleStart}
                   >
-                    Choose Your Avatar
-                  </p>
-                  <AvatarGrid
-                    selected={avatarId}
-                    onSelect={setAvatarId}
-                  />
+                    ▶ Join
+                  </Button>
+                  {joinError && (
+                    <span className="text-[11px] text-center" style={{ color: "#ef4444" }}>
+                      {joinError}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Error banner */}
-            {joinError && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                className="mt-4 px-4 py-3 text-xs rounded-lg"
-                style={{
-                  background: "rgba(239,68,68,0.07)",
-                  border: "1px solid rgba(239,68,68,0.25)",
-                  color: "#ef4444",
-                }}
-              >
-                ▲ {joinError}
-              </motion.div>
-            )}
-
-            <Divider />
-
-            {/* ── Actions ── */}
-            <div className="flex items-center gap-4">
+            {/* Back — bottom-left */}
+            <div className="flex items-center pt-5">
               <button
                 onClick={() => router.push("/lobby")}
                 className="text-[10px] uppercase tracking-[0.3em] font-bold flex items-center gap-2 cursor-pointer transition-colors duration-150"
                 style={{ color: "var(--text-muted)" }}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--teal)")}
+                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "#22c462")}
                 onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text-muted)")}
               >
-                ◀ BACK
+                ← BACK
               </button>
-
-              <div className="flex-1" />
-
-              <Button
-                size="lg"
-                loading={starting}
-                disabled={
-                  !name.trim() ||
-                  (needsPassword && !roomPassword.trim())
-                }
-                onClick={handleStart}
-              >
-                ▶ Start Game
-              </Button>
+            </div>
             </div>
           </div>
         </motion.div>

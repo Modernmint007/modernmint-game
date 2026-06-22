@@ -35,6 +35,12 @@
 
   /* Circuit pattern colour */
   --circuit: rgba(29, 233, 214, 0.07);
+
+  /* Green lobby palette */
+  --green-primary:  #1a7a45;
+  --green-glow:     rgba(20, 110, 55, 0.40);
+  --green-bright:   #22c462;
+  --bg-lobby:       #050e07;
 }
 
 *,
@@ -43,12 +49,18 @@
   box-sizing: border-box;
 }
 
+/* html keeps the dark base as the ultimate fallback; body is transparent so a
+   fixed PageBackground layer (e.g. the lobby artwork) shows through instead of
+   being covered by an opaque body background. */
+html {
+  background: var(--bg-deep);
+}
+
 html,
 body {
   margin: 0;
   padding: 0;
   min-height: 100%;
-  background: var(--bg-deep);
   color: var(--text-primary);
   font-family: "Inter", system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;

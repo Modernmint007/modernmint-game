@@ -19,7 +19,7 @@ const ROLE_DATA = {
     ],
     desc: "Build your vision, lead your team and pitch to investors.",
     icon: (
-      <svg width="42" height="42" viewBox="0 0 24 24" fill="none">
+      <svg width="52" height="52" viewBox="0 0 24 24" fill="none">
         <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="#1de9d6" strokeWidth="1.6"
           strokeLinecap="round" strokeLinejoin="round"/>
         <path d="M2 17l10 5 10-5" stroke="#1de9d6" strokeWidth="1.6"
@@ -40,7 +40,7 @@ const ROLE_DATA = {
     ],
     desc: "Fund startups, control decisions and multiply your returns.",
     icon: (
-      <svg width="42" height="42" viewBox="0 0 24 24" fill="none">
+      <svg width="52" height="52" viewBox="0 0 24 24" fill="none">
         <circle cx="12" cy="12" r="9" stroke="#d4a843" strokeWidth="1.6"/>
         <path d="M12 6v12M9 9h4.5a1.5 1.5 0 0 1 0 3H9.5a1.5 1.5 0 0 0 0 3H15"
           stroke="#d4a843" strokeWidth="1.6" strokeLinecap="round"/>
@@ -58,7 +58,7 @@ export default function RoleCard({ role, selected, onSelect }: RoleCardProps) {
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       transition={{ duration: 0.15 }}
-      className="relative flex flex-col items-center p-5 rounded-xl w-full text-left cursor-pointer"
+      className="relative flex flex-col items-center p-6 rounded-2xl w-full h-full text-left cursor-pointer"
       style={{
         background: selected
           ? `rgba(${role === "founder" ? "29,233,214" : "212,168,67"},0.08)`
@@ -87,7 +87,7 @@ export default function RoleCard({ role, selected, onSelect }: RoleCardProps) {
 
       {/* Icon */}
       <div
-        className="w-16 h-16 rounded-full flex items-center justify-center mb-3"
+        className="w-20 h-20 rounded-full flex items-center justify-center mb-4"
         style={{
           background: selected
             ? `${data.color}18`
@@ -100,7 +100,7 @@ export default function RoleCard({ role, selected, onSelect }: RoleCardProps) {
 
       {/* Role name */}
       <span
-        className="text-sm font-black uppercase tracking-[0.2em] mb-1"
+        className="text-lg font-black uppercase tracking-[0.2em] mb-1.5"
         style={{ color: data.color }}
       >
         {data.label}
@@ -108,7 +108,7 @@ export default function RoleCard({ role, selected, onSelect }: RoleCardProps) {
 
       {/* Tagline */}
       <span
-        className="text-[10px] font-semibold uppercase tracking-widest mb-3"
+        className="text-[11px] font-semibold uppercase tracking-widest mb-4"
         style={{ color: "var(--text-muted)" }}
       >
         {data.tagline}

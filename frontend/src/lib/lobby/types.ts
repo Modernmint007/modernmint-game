@@ -29,6 +29,17 @@ export const AVATARS: AvatarDef[] = [
   { id: 8, initials: 'AV', bg: '#0d1a2e', accent: '#4acfff', name: 'Avery'   },
 ];
 
+// Role-specific player avatars chosen on the join page (avatar_id → image URL).
+// Founders use ids 1-4, investors use ids 5-6 — matching the join-page selector.
+export const AVATAR_IMAGE_BY_ID: Record<number, string> = {
+  1: 'https://modernmintgame.com/cdn/shop/files/01.png?v=1772091663&width=2000',
+  2: 'https://modernmintgame.com/cdn/shop/files/03.png?v=1772091662&width=2000',
+  3: 'https://modernmintgame.com/cdn/shop/files/02.png?v=1772091663&width=2000',
+  4: 'https://modernmintgame.com/cdn/shop/files/05.png?v=1772091663&width=2000',
+  5: 'https://modernmintgame.com/cdn/shop/files/04.png?v=1772091663&width=2000',
+  6: 'https://modernmintgame.com/cdn/shop/files/06.png?v=1772091663&width=2000',
+};
+
 // ── Room / Slot data ──────────────────────────────────────────────────────
 
 export interface PlayerSlot {

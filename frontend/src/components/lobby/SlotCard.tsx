@@ -49,7 +49,7 @@ export default function SlotCard({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.06, duration: 0.3 }}
-      className="relative flex flex-col items-center gap-2 p-3 rounded-xl"
+      className="relative flex flex-col items-center gap-1.5 p-2.5 rounded-xl"
       style={{
         background: "rgba(6,20,26,0.70)",
         border: "1px solid rgba(29,233,214,0.12)",

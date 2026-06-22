@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import PageBackground from "@/components/PageBackground";
 import LobbyNavBar   from "@/components/lobby/LobbyNavBar";
 import RoomRow        from "@/components/lobby/RoomRow";
-import GlobalChat     from "@/components/lobby/GlobalChat";
 import Button         from "@/components/ui/Button";
 import { fetchRooms } from "@/lib/lobby/api";
 import { useAuthGuard } from "@/lib/useAuthGuard";
@@ -21,7 +20,8 @@ function JoinWithPasswordModal({ onClose }: { onClose: () => void }) {
 
   function handleSubmit() {
     if (!code.trim()) return;
-    // In production: validate code + password against backend
+    // Remember the entered password so the join page doesn't ask again.
+    try { sessionStorage.setItem(`mm_room_pw_${code.trim()}`, pw); } catch { /* ignore */ }
     router.push(`/lobby/join/${code.trim()}`);
   }
 
@@ -125,40 +125,27 @@ function JoinWithPasswordModal({ onClose }: { onClose: () => void }) {
 // ── Table header row ──────────────────────────────────────────────────────
 
 function TableHeader() {
+  const cls = "text-[10px] font-black uppercase tracking-[0.22em]";
+  const col = { color: "#e8cf7a" };
   return (
     <div
-      className="flex items-center gap-4 px-4 py-2"
-      style={{ borderBottom: "1px solid rgba(29,233,214,0.12)" }}
+      className="flex items-center gap-4 pl-6 pr-2.5 pt-1 pb-3 sticky top-0 z-10"
+      style={{ background: "rgba(6,10,7,0.45)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }}
     >
       <div className="flex-1">
-        <span className="text-[9px] font-black uppercase tracking-[0.35em]"
-          style={{ color: "var(--gold)" }}>
-          Game Name
-        </span>
+        <span className={cls} style={col}>Game Name</span>
       </div>
       <div className="w-28 flex-shrink-0">
-        <span className="text-[9px] font-black uppercase tracking-[0.35em]"
-          style={{ color: "var(--gold)" }}>
-          Mode
-        </span>
+        <span className={cls} style={col}>Mode</span>
       </div>
-      <div className="w-[120px] flex-shrink-0">
-        <span className="text-[9px] font-black uppercase tracking-[0.3em]"
-          style={{ color: "var(--gold)" }}>
-          Founders (Max 4)
-        </span>
+      <div className="w-[150px] flex-shrink-0">
+        <span className={cls} style={col}>Founders (Max&nbsp;4)</span>
       </div>
-      <div className="w-[70px] flex-shrink-0">
-        <span className="text-[9px] font-black uppercase tracking-[0.3em]"
-          style={{ color: "var(--gold)" }}>
-          Investors (Max 2)
-        </span>
+      <div className="w-[80px] flex-shrink-0">
+        <span className={cls} style={col}>Investors (Max&nbsp;2)</span>
       </div>
-      <div className="w-[100px] flex-shrink-0 flex justify-end">
-        <span className="text-[9px] font-black uppercase tracking-[0.35em]"
-          style={{ color: "var(--gold)" }}>
-          Join
-        </span>
+      <div className="w-[116px] flex-shrink-0 flex justify-end">
+        <span className={cls} style={col}>Join</span>
       </div>
     </div>
   );
@@ -211,144 +198,169 @@ export default function LobbyPage() {
   useEffect(() => {
     if (!ready) return;
     startTransition(() => { loadRooms(); });
+    // Poll so the list reflects current room state — joined players replace
+    // their "+" placeholders automatically without a manual refresh.
+    const poll = setInterval(() => {
+      startTransition(() => { loadRooms(); });
+    }, 5000);
+    return () => clearInterval(poll);
   }, [ready, loadRooms]);
 
   if (!ready) return null;
 
   return (
     <div className="relative flex flex-col h-screen overflow-hidden">
-      <PageBackground />
+      <PageBackground variant="lobby" />
 
       {/* Nav bar */}
       <LobbyNavBar />
 
-      {/* Body: table + chat */}
-      <div className="flex flex-1 overflow-hidden">
-
-        {/* ── Left: game list ── */}
+      {/* Body — scrollable, padded */}
+      <div className="flex-1 overflow-y-auto px-8 pb-6 pt-1">
         <motion.div
-          className="flex flex-col flex-1 overflow-hidden"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
+          className="flex flex-col h-full max-w-[1160px] w-full mx-auto"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45 }}
         >
-          {/* Header strip */}
+
+          {/* ── Translucent green-glass panel with gold border.
+                Low opacity so the emblem artwork glows through/around it (no blur, so it stays crisp). ── */}
           <div
-            className="flex-shrink-0 px-4 py-2.5 flex items-center gap-3"
-            style={{ borderBottom: "1px solid rgba(29,233,214,0.08)" }}
+            className="relative overflow-hidden rounded-[28px] flex flex-col flex-1 pt-5 my-1.5"
+            style={{
+              // Green-tinted translucent glass (like the Figma card) — reads as emerald glass
+              // over the artwork instead of a black/dark block, while staying see-through.
+              background: "rgba(16,46,30,0.26)",
+              border: "1.5px solid rgba(222,186,98,0.70)",
+              backdropFilter: "blur(16px)",
+              WebkitBackdropFilter: "blur(16px)",
+              boxShadow:
+                "0 12px 60px rgba(0,0,0,0.40), 0 0 38px rgba(222,186,98,0.18), inset 0 1px 0 rgba(222,186,98,0.22)",
+            }}
           >
-            <span
-              className="text-[9px] font-black uppercase tracking-[0.4em]"
-              style={{ color: "var(--gold)" }}
-            >
-              ◈ Live Rooms
-            </span>
-            {!loading && (
-              <span
-                className="px-2 py-0.5 rounded text-[9px] font-bold"
+            {/* ── Artwork layer — INSIDE the panel, fills the interior, behind the rows.
+                  overflow-hidden on the panel clips it to the rounded corners. ── */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/lobby-bg.jpg"
+              alt=""
+              aria-hidden
+              className="absolute inset-0 w-full h-full object-cover pointer-events-none select-none"
+            />
+
+            {/* ── Soft emerald radial glow — above the artwork, below the rows ── */}
+            <div
+              aria-hidden
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background:
+                  "radial-gradient(ellipse 72% 62% at 50% 44%, rgba(43,214,115,0.22) 0%, rgba(20,120,66,0.10) 45%, transparent 76%)",
+              }}
+            />
+
+            {/* Scrollable room list with sticky column headers — header shares the exact
+                same px-4 + pl-6/pr-2.5 box as the rows, so the columns align perfectly. */}
+            <div className="relative z-10 flex-1 overflow-y-auto px-4">
+              <TableHeader />
+              {loading ? (
+                <div className="flex items-center justify-center py-20">
+                  <span
+                    className="text-[11px] font-black uppercase tracking-[0.35em] animate-pulse"
+                    style={{ color: "var(--text-muted)" }}
+                  >
+                    Loading rooms...
+                  </span>
+                </div>
+              ) : error ? (
+                <div className="flex flex-col items-center justify-center py-20 gap-3">
+                  <p className="text-[11px] font-black uppercase tracking-[0.3em]" style={{ color: "#ef4444" }}>
+                    ▲ {error}
+                  </p>
+                  <Button size="sm" variant="ghost" onClick={loadRooms}>Retry</Button>
+                </div>
+              ) : rooms.length === 0 ? (
+                <EmptyState />
+              ) : (
+                <div className="flex flex-col gap-2 pb-2">
+                  {rooms.map((room, i) => <RoomRow key={room.id} room={room} index={i} />)}
+                </div>
+              )}
+            </div>
+
+            {/* Bottom action buttons — amber-bordered green capsules, inside the panel */}
+            <div className="relative z-10 flex-shrink-0 flex items-center gap-4 px-4 py-3">
+              {/* CREATE YOUR OWN GAME */}
+              <button
+                onClick={() => router.push("/lobby/create")}
+                className="flex-1 py-3.5 rounded-2xl font-black text-xs uppercase tracking-[0.18em] cursor-pointer transition-all duration-150"
                 style={{
-                  background: "rgba(29,233,214,0.10)",
-                  border: "1px solid rgba(29,233,214,0.25)",
-                  color: "#1de9d6",
+                  background:
+                    "linear-gradient(180deg, rgba(120,92,34,0.34) 0%, rgba(74,54,18,0.34) 100%)",
+                  border: "1.5px solid rgba(214,178,90,0.60)",
+                  color: "#f0d89a",
+                  boxShadow: "inset 0 1px 0 rgba(214,178,90,0.22), 0 0 14px rgba(43,214,115,0.08)",
+                }}
+                onMouseEnter={(e) => {
+                  const el = e.currentTarget as HTMLButtonElement;
+                  el.style.boxShadow = "inset 0 1px 0 rgba(214,178,90,0.25), 0 0 22px rgba(43,214,115,0.25)";
+                }}
+                onMouseLeave={(e) => {
+                  const el = e.currentTarget as HTMLButtonElement;
+                  el.style.boxShadow = "inset 0 1px 0 rgba(214,178,90,0.18), 0 0 14px rgba(43,214,115,0.10)";
                 }}
               >
-                {rooms.length} online
-              </span>
-            )}
-            {/* Refresh button */}
-            <button
-              onClick={loadRooms}
-              disabled={loading}
-              className="ml-auto text-[9px] uppercase tracking-widest font-bold transition-colors duration-150 cursor-pointer disabled:opacity-40"
-              style={{ color: "var(--text-muted)" }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--teal)")}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text-muted)")}
-            >
-              ↻ Refresh
-            </button>
+                Create Your Own Game
+              </button>
+
+              {/* JOIN WITH PASSWORD */}
+              <button
+                onClick={() => setShowPwModal(true)}
+                className="flex-1 py-3.5 rounded-2xl font-black text-xs uppercase tracking-[0.18em] cursor-pointer transition-all duration-150"
+                style={{
+                  background:
+                    "linear-gradient(180deg, rgba(120,92,34,0.34) 0%, rgba(74,54,18,0.34) 100%)",
+                  border: "1.5px solid rgba(214,178,90,0.60)",
+                  color: "#f0d89a",
+                  boxShadow: "inset 0 1px 0 rgba(214,178,90,0.22), 0 0 14px rgba(43,214,115,0.08)",
+                }}
+                onMouseEnter={(e) => {
+                  const el = e.currentTarget as HTMLButtonElement;
+                  el.style.boxShadow = "inset 0 1px 0 rgba(214,178,90,0.25), 0 0 22px rgba(43,214,115,0.25)";
+                }}
+                onMouseLeave={(e) => {
+                  const el = e.currentTarget as HTMLButtonElement;
+                  el.style.boxShadow = "inset 0 1px 0 rgba(214,178,90,0.18), 0 0 14px rgba(43,214,115,0.10)";
+                }}
+              >
+                Join with Password
+              </button>
+            </div>
           </div>
 
-          {/* Column headers */}
-          <TableHeader />
-
-          {/* Scrollable room list */}
-          <div className="flex-1 overflow-y-auto">
-            {loading ? (
-              <div className="flex items-center justify-center py-20">
-                <span
-                  className="text-[11px] font-black uppercase tracking-[0.35em] animate-pulse"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  Loading rooms...
-                </span>
-              </div>
-            ) : error ? (
-              <div className="flex flex-col items-center justify-center py-20 gap-3">
-                <p
-                  className="text-[11px] font-black uppercase tracking-[0.3em]"
-                  style={{ color: "#ef4444" }}
-                >
-                  ▲ {error}
-                </p>
-                <Button size="sm" variant="ghost" onClick={loadRooms}>
-                  Retry
-                </Button>
-              </div>
-            ) : rooms.length === 0 ? (
-              <EmptyState />
-            ) : (
-              rooms.map((room, i) => (
-                <RoomRow key={room.id} room={room} index={i} />
-              ))
-            )}
-          </div>
-
-          {/* Bottom action bar */}
-          <motion.div
-            className="flex-shrink-0 flex items-center gap-4 px-4 py-3"
-            style={{
-              borderTop: "1px solid rgba(29,233,214,0.08)",
-              background: "rgba(3,9,12,0.60)",
-              backdropFilter: "blur(8px)",
-            }}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.4 }}
-          >
-            {/* Back link */}
+          {/* ← BACK — green pill below the panel */}
+          <div className="flex items-center pt-4">
             <button
               onClick={() => router.push("/menu")}
-              className="text-[10px] uppercase tracking-[0.3em] font-bold flex items-center gap-2 cursor-pointer transition-colors duration-150"
-              style={{ color: "var(--text-muted)" }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--teal)")}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = "var(--text-muted)")}
+              className="px-7 py-2.5 rounded-xl text-[11px] uppercase tracking-[0.22em] font-bold flex items-center gap-2 cursor-pointer transition-all duration-150"
+              style={{
+                background: "rgba(10,40,22,0.78)",
+                border: "1.5px solid rgba(222,186,98,0.60)",
+                color: "#f0d89a",
+              }}
+              onMouseEnter={(e) => {
+                const el = e.currentTarget as HTMLElement;
+                el.style.boxShadow = "0 0 16px rgba(222,186,98,0.25)";
+              }}
+              onMouseLeave={(e) => {
+                const el = e.currentTarget as HTMLElement;
+                el.style.boxShadow = "none";
+              }}
             >
-              ◀ BACK
+              ← Back
             </button>
-
-            <div className="flex-1" />
-
-            {/* Create own game */}
-            <Button
-              size="md"
-              onClick={() => router.push("/lobby/create")}
-            >
-              🎮 Create Own Game
-            </Button>
-
-            {/* Join with password */}
-            <Button
-              variant="secondary"
-              size="md"
-              onClick={() => setShowPwModal(true)}
-            >
-              🔒 Join with Password
-            </Button>
-          </motion.div>
+          </div>
         </motion.div>
-
-        {/* ── Right: global chat ── */}
-        <GlobalChat />
       </div>
 
       {/* Modal overlay */}

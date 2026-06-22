@@ -11,6 +11,7 @@ interface PlayerAvatarProps {
   showStatus?: boolean;
   selected?: boolean;
   onClick?:  () => void;
+  imageSrc?: string;   // when set, a joined player's selected avatar image is shown
 }
 
 const sizes = {
@@ -53,7 +54,7 @@ function PlusIcon({ size }: { size: number }) {
   const s = size * 0.45;
   return (
     <svg width={s} height={s} viewBox="0 0 24 24" fill="none">
-      <path d="M12 5v14M5 12h14" stroke="rgba(29,233,214,0.5)" strokeWidth="2" strokeLinecap="round" />
+      <path d="M12 5v14M5 12h14" stroke="rgba(160,255,200,0.85)" strokeWidth="2.2" strokeLinecap="round" />
     </svg>
   );
 }
@@ -65,6 +66,7 @@ export default function PlayerAvatar({
   showStatus = false,
   selected = false,
   onClick,
+  imageSrc,
 }: PlayerAvatarProps) {
   const s    = sizes[size];
   const dim  = s.outer;
@@ -80,14 +82,15 @@ export default function PlayerAvatar({
         className={clsx(
           "rounded-full flex items-center justify-center flex-shrink-0",
           "transition-all duration-150",
-          onClick && "cursor-pointer hover:border-[rgba(29,233,214,0.5)]"
+          onClick && "cursor-pointer hover:border-[rgba(43,214,115,0.7)]"
         )}
         style={{
           width: dim,
           height: dim,
-          border: "1.5px dashed rgba(29,233,214,0.28)",
-          background: "rgba(29,233,214,0.04)",
-          boxShadow: selected ? "0 0 0 2px #1de9d6" : undefined,
+          border: "1.5px solid rgba(43,214,115,0.45)",
+          background:
+            "radial-gradient(circle at 38% 32%, rgba(43,214,115,0.22), rgba(6,30,16,0.85))",
+          boxShadow: selected ? "0 0 0 2px #2bd673" : undefined,
         }}
       >
         <PlusIcon size={dim} />
@@ -145,7 +148,10 @@ export default function PlayerAvatar({
         style={{
           width: dim,
           height: dim,
-          background: `radial-gradient(circle at 35% 35%, ${avt.accent}33, ${avt.bg})`,
+          overflow: "hidden",
+          background: imageSrc
+            ? "#04190d"
+            : `radial-gradient(circle at 35% 35%, ${avt.accent}33, ${avt.bg})`,
           border: selected
             ? `2px solid ${avt.accent}`
             : `1.5px solid ${avt.accent}44`,
@@ -153,7 +159,12 @@ export default function PlayerAvatar({
           color: avt.accent,
         }}
       >
-        <span className={s.text}>{avt.initials}</span>
+        {imageSrc ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={imageSrc} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <span className={s.text}>{avt.initials}</span>
+        )}
       </div>
 
       {/* Online status dot */}

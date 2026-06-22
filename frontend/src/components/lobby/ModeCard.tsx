@@ -44,7 +44,7 @@ export default function ModeCard({ mode, selected, onSelect }: ModeCardProps) {
       whileHover={{ scale: 1.04 }}
       whileTap={{ scale: 0.97 }}
       transition={{ duration: 0.14 }}
-      className="flex flex-col items-center gap-2 p-4 rounded-xl flex-1 cursor-pointer text-center"
+      className="flex flex-col items-center gap-1.5 p-3 rounded-xl flex-1 cursor-pointer text-center"
       style={{
         background: selected
           ? `rgba(${
