@@ -13,17 +13,25 @@ export default function PageBackground({ variant = "default" }: PageBackgroundPr
         {/* Dark base — only fills overscroll/rubber-band gutters so they never flash green */}
         <div className="absolute inset-0" style={{ background: "#05080a" }} />
 
-        {/* The SAME lobby-bg.jpg artwork as the full-page environment — a continuation of
-            the panel's scene, shown directly: no blur, no emerald tint, no corner blooms.
-            Lightly dimmed so the sharp panel still reads as the focal point. */}
+        {/* The SAME lobby-bg.jpg artwork as the full-page environment — same image/theme,
+            but dimmed and de-glossed so it reads as a cinematic backdrop, not a bright,
+            reflective surface. */}
         <div
           className="absolute inset-0"
           style={{
             backgroundImage: "url('/lobby-bg.jpg')",
             backgroundSize: "cover",
             backgroundPosition: "center",
-            filter: "brightness(0.82)",
+            // Lower brightness + slightly lower contrast/saturation tames the reflections.
+            filter: "brightness(0.55) contrast(0.92) saturate(0.9)",
           }}
+        />
+
+        {/* Neutral darkening overlay — pushes the artwork back so the UI panels are the
+            primary focus. Kept neutral (not green) to preserve the theme. */}
+        <div
+          className="absolute inset-0"
+          style={{ background: "rgba(2,6,4,0.45)" }}
         />
       </div>
     );

@@ -3,9 +3,35 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { getUser, clearSession } from "@/lib/auth";
+import { getUser, getToken, clearSession, setStoredProfileImage } from "@/lib/auth";
+import { usersApi, API_BASE_URL } from "@/lib/api";
+import PersonAvatar from "./PersonAvatar";
 
-const AVATAR_KEY = "mm_avatar_image";
+// Downscale a picked image to a small JPEG data URL before uploading.
+function downscaleImage(file: File, max = 256): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { reject(new Error("Canvas unavailable")); return; }
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.onerror = () => reject(new Error("Could not load image"));
+      img.src = String(reader.result);
+    };
+    reader.onerror = () => reject(new Error("Could not read file"));
+    reader.readAsDataURL(file);
+  });
+}
 
 interface LobbyNavBarProps {
   title?: string;
@@ -17,6 +43,10 @@ interface LobbyNavBarProps {
 function ProfileAvatar() {
   const [initials, setInitials] = useState("MM");
   const [image, setImage]       = useState<string | null>(null);
+  // Staged (selected but not yet saved) downscaled preview.
+  const [pending, setPending]   = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError]       = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -29,30 +59,51 @@ function ProfileAvatar() {
           : user.username.slice(0, 2).toUpperCase()
       );
     }
-    // Restore a previously-uploaded profile image (local only, no backend)
-    try {
-      const saved = localStorage.getItem(AVATAR_KEY);
-      if (saved) setImage(saved);
-    } catch {
-      /* ignore */
+    // Show the persisted profile image (served from the backend) if the user has one.
+    if (user?.profile_image_url) {
+      setImage(`${API_BASE_URL}${user.profile_image_url}`);
     }
   }, []);
 
-  function handlePick(e: React.ChangeEvent<HTMLInputElement>) {
+  // Step 1–3: pick → downscale → stage as a preview. Does NOT upload yet.
+  async function handlePick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = String(reader.result);
-      setImage(dataUrl);                 // immediate preview
-      try {
-        localStorage.setItem(AVATAR_KEY, dataUrl); // persist across refresh
-      } catch {
-        /* storage full / unavailable — preview still works */
-      }
-    };
-    reader.readAsDataURL(file);
     e.target.value = ""; // allow re-selecting the same file
+    if (!file) return;
+    setError(null);
+    try {
+      const dataUrl = await downscaleImage(file, 256);
+      setPending(dataUrl);
+    } catch {
+      setError("Could not read that image.");
+    }
+  }
+
+  // Step 5: Save commits the staged image to the backend.
+  async function handleSave() {
+    if (!pending) return;
+    const token = getToken();
+    if (!token) { setError("Please sign in again."); return; }
+
+    setUploading(true);
+    setError(null);
+    try {
+      const { profileImageUrl } = await usersApi.updateProfileImage(pending, token);
+      setStoredProfileImage(profileImageUrl);
+      setImage(`${API_BASE_URL}${profileImageUrl}`); // update navbar immediately
+      setPending(null);                              // lobby refreshes on its poll
+    } catch {
+      setPending(null);                              // restore the previous image
+      setError("Upload failed. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  // Step 6: Cancel discards the staged preview and restores the previous image.
+  function handleCancel() {
+    setPending(null);
+    setError(null);
   }
 
   return (
@@ -66,46 +117,30 @@ function ProfileAvatar() {
         className="hidden"
       />
 
-      {/* Avatar — circular photo with white border + green glow ring */}
-      <div
-        className="w-full h-full rounded-full flex items-center justify-center font-black text-xl overflow-hidden"
-        style={{
-          background: image
-            ? "#04190d"
-            : "radial-gradient(circle at 38% 32%, rgba(40,220,110,0.55), rgba(4,26,13,0.96))",
-          border: "3px solid #f2f7f3",
-          color: "#d6ffe6",
-          boxShadow:
-            "0 0 22px rgba(43,214,115,0.55), inset 0 0 14px rgba(43,214,115,0.25)",
-        }}
-      >
-        {image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={image} alt="Profile" className="w-full h-full object-cover" />
-        ) : (
-          initials
-        )}
-      </div>
+      {/* Avatar — shows the staged preview while editing, else the saved image */}
+      <PersonAvatar src={pending ?? image} initials={initials} size={76} borderWidth={3} glowPx={22} />
 
-      {/* Edit badge — opens the file picker */}
-      <button
-        type="button"
-        title="Change profile photo"
-        onClick={() => fileRef.current?.click()}
-        className="absolute -top-0.5 -right-0.5 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
-        style={{
-          background: "#23d3c4",
-          border: "2.5px solid #04190d",
-          boxShadow: "0 0 8px rgba(35,211,196,0.55)",
-        }}
-      >
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
-            stroke="#04190d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-          />
-        </svg>
-      </button>
+      {/* Edit badge — opens the file picker (hidden while a preview is staged) */}
+      {!pending && (
+        <button
+          type="button"
+          title="Change profile photo"
+          onClick={() => fileRef.current?.click()}
+          className="absolute -top-0.5 -right-0.5 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer"
+          style={{
+            background: "#23d3c4",
+            border: "2.5px solid #04190d",
+            boxShadow: "0 0 8px rgba(35,211,196,0.55)",
+          }}
+        >
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+            <path
+              d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+              stroke="#04190d" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+      )}
 
       {/* Online status dot — bottom-left, matching Figma */}
       <span
@@ -116,6 +151,49 @@ function ProfileAvatar() {
           boxShadow: "0 0 8px #2bff84",
         }}
       />
+
+      {/* Save / Cancel — shown only while a preview is staged */}
+      {pending && (
+        <div className="absolute left-0 top-full mt-2 flex items-center gap-1.5 z-30">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={uploading}
+            className="px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider cursor-pointer transition-all duration-150 disabled:opacity-60 disabled:cursor-default"
+            style={{
+              background: "rgba(34,196,98,0.18)",
+              border: "1px solid rgba(43,214,115,0.60)",
+              color: "#bff0d2",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {uploading ? "Saving…" : "Save"}
+          </button>
+          <button
+            type="button"
+            onClick={handleCancel}
+            disabled={uploading}
+            className="px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider cursor-pointer transition-all duration-150 disabled:opacity-60 disabled:cursor-default"
+            style={{
+              background: "rgba(10,40,22,0.70)",
+              border: "1px solid rgba(222,186,98,0.45)",
+              color: "#f0d89a",
+            }}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {/* Error — shown after a failed upload */}
+      {error && !pending && (
+        <div
+          className="absolute left-0 top-full mt-2 text-[10px] font-semibold z-30"
+          style={{ color: "#ef4444", whiteSpace: "nowrap" }}
+        >
+          ▲ {error}
+        </div>
+      )}
     </div>
   );
 }

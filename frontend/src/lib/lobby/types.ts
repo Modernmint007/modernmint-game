@@ -47,6 +47,7 @@ export interface PlayerSlot {
   avatarId?: number;   // 1-8
   name?:     string;
   status?:   'online' | 'away' | 'offline';
+  profileImageUrl?: string;   // absolute URL to the player's profile image (display-only)
 }
 
 export interface GameRoom {

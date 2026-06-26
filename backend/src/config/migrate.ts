@@ -9,6 +9,14 @@ export async function runMigrations(): Promise<void> {
   try {
     await client.query("BEGIN");
 
+    // ── users: profile image (display-only) ──────────────────────────────────
+    // The users table pre-exists; add the column idempotently so existing rows
+    // and data are untouched. Stores a base64 image data URL (served via
+    // GET /api/users/:id/avatar, never returned inline in room lists).
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_url TEXT
+    `);
+
     // ── rooms ──────────────────────────────────────────────────────────────
     await client.query(`
       CREATE TABLE IF NOT EXISTS rooms (

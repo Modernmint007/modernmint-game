@@ -3,7 +3,7 @@ import pool from "../config/database";
 import { hashPassword, verifyPassword } from "../utils/hash";
 import {
   RoomRow,
-  RoomPlayerRow,
+  RoomPlayerJoinedRow,
   RoomResponse,
   PlayerSlotResponse,
   CreateRoomBody,
@@ -13,11 +13,19 @@ import {
   SlotKind,
 } from "../types/lobby.types";
 
+// room_players joined with the player's user row (for profile images).
+// Reused by every read so list/get/join/create responses are consistent.
+const PLAYER_SELECT = `
+  SELECT rp.*, u.profile_image_url, u.updated_at AS user_updated_at
+  FROM room_players rp
+  LEFT JOIN users u ON u.id = rp.user_id
+`;
+
 // ── Helper: assemble a RoomResponse from raw DB rows ──────────────────────
 
 function assembleRoom(
   room: RoomRow,
-  players: RoomPlayerRow[],
+  players: RoomPlayerJoinedRow[],
   currentUserId?: string
 ): RoomResponse {
   function buildSlots(role: PlayerRole, max: number): PlayerSlotResponse[] {
@@ -32,12 +40,20 @@ function assembleRoom(
         ? "you"
         : "human";
 
+      // Display-only: human players with a saved photo get a versioned avatar URL.
+      // No photo (or AI) → omit it so the frontend falls back to the avatar_id system.
+      const profileImageUrl =
+        !p.is_ai && p.user_id && p.profile_image_url
+          ? `/api/users/${p.user_id}/avatar?v=${p.user_updated_at ? p.user_updated_at.getTime() : 0}`
+          : undefined;
+
       return {
         kind,
         avatarId: p.avatar_id,
         name:     p.display_name,
         status:   p.is_ai ? undefined : ("online" as const),
         userId:   p.user_id ?? undefined,
+        profileImageUrl,
       };
     });
 
@@ -76,10 +92,8 @@ export async function listRooms(currentUserId?: string): Promise<RoomResponse[]>
   if (rooms.length === 0) return [];
 
   const roomIds = rooms.map((r) => r.id);
-  const playersResult = await pool.query<RoomPlayerRow>(
-    `SELECT * FROM room_players
-     WHERE room_id = ANY($1::uuid[])
-     ORDER BY joined_at ASC`,
+  const playersResult = await pool.query<RoomPlayerJoinedRow>(
+    `${PLAYER_SELECT} WHERE rp.room_id = ANY($1::uuid[]) ORDER BY rp.joined_at ASC`,
     [roomIds]
   );
   const players = playersResult.rows;
@@ -105,8 +119,8 @@ export async function getRoom(
   }
   const room = roomResult.rows[0];
 
-  const playersResult = await pool.query<RoomPlayerRow>(
-    `SELECT * FROM room_players WHERE room_id = $1 ORDER BY joined_at ASC`,
+  const playersResult = await pool.query<RoomPlayerJoinedRow>(
+    `${PLAYER_SELECT} WHERE rp.room_id = $1 ORDER BY rp.joined_at ASC`,
     [roomId]
   );
 
@@ -226,8 +240,8 @@ export async function createRoom(
     await client.query("COMMIT");
 
     // Fetch all players for the response
-    const playersResult = await pool.query<RoomPlayerRow>(
-      `SELECT * FROM room_players WHERE room_id = $1 ORDER BY joined_at ASC`,
+    const playersResult = await pool.query<RoomPlayerJoinedRow>(
+      `${PLAYER_SELECT} WHERE rp.room_id = $1 ORDER BY rp.joined_at ASC`,
       [room.id]
     );
 
@@ -325,8 +339,8 @@ export async function joinRoom(
     await client.query("COMMIT");
 
     // Return fresh room state
-    const playersResult = await pool.query<RoomPlayerRow>(
-      `SELECT * FROM room_players WHERE room_id=$1 ORDER BY joined_at ASC`,
+    const playersResult = await pool.query<RoomPlayerJoinedRow>(
+      `${PLAYER_SELECT} WHERE rp.room_id=$1 ORDER BY rp.joined_at ASC`,
       [roomId]
     );
     return assembleRoom(room, playersResult.rows, userId);
@@ -397,8 +411,8 @@ export async function joinRoomWithPassword(
 
     await client.query("COMMIT");
 
-    const playersResult = await pool.query<RoomPlayerRow>(
-      `SELECT * FROM room_players WHERE room_id=$1 ORDER BY joined_at ASC`,
+    const playersResult = await pool.query<RoomPlayerJoinedRow>(
+      `${PLAYER_SELECT} WHERE rp.room_id=$1 ORDER BY rp.joined_at ASC`,
       [roomId]
     );
     return assembleRoom(room, playersResult.rows, userId);

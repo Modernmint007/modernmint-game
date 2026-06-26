@@ -5,8 +5,26 @@ import {
   SignupBody,
   LoginBody,
   AuthResponse,
+  User,
   UserRow,
 } from "../types/auth.types";
+
+// ── Response mapping ───────────────────────────────────────────────────────
+
+// Never expose the raw base64 image — return a small versioned serve URL instead
+// (matches the room-participant pattern: /api/users/:id/avatar?v=updated_at).
+function toAuthUser(u: UserRow): User {
+  return {
+    id:       u.id,
+    username: u.username,
+    email:    u.email,
+    profile_image_url: u.profile_image_url
+      ? `/api/users/${u.id}/avatar?v=${u.updated_at.getTime()}`
+      : null,
+    created_at: u.created_at,
+    updated_at: u.updated_at,
+  };
+}
 
 // ── Validation helpers ─────────────────────────────────────────────────────
 
@@ -68,13 +86,13 @@ export async function signup(body: SignupBody): Promise<AuthResponse> {
   const result = await pool.query<UserRow>(
     `INSERT INTO users (username, email, password_hash)
      VALUES ($1, $2, $3)
-     RETURNING id, username, email, created_at, updated_at`,
+     RETURNING id, username, email, profile_image_url, created_at, updated_at`,
     [username, email.toLowerCase(), passwordHash]
   );
   const user = result.rows[0];
 
   const token = signToken({ sub: user.id, email: user.email, username: user.username });
-  return { token, user: { id: user.id, username: user.username, email: user.email, created_at: user.created_at, updated_at: user.updated_at } };
+  return { token, user: toAuthUser(user) };
 }
 
 // ── Login ──────────────────────────────────────────────────────────────────
@@ -87,7 +105,7 @@ export async function login(body: LoginBody): Promise<AuthResponse> {
   }
 
   const result = await pool.query<UserRow>(
-    `SELECT id, username, email, password_hash, created_at, updated_at
+    `SELECT id, username, email, password_hash, profile_image_url, created_at, updated_at
      FROM users WHERE email = $1 LIMIT 1`,
     [email.toLowerCase()]
   );
@@ -102,5 +120,5 @@ export async function login(body: LoginBody): Promise<AuthResponse> {
   if (!valid) throw INVALID;
 
   const token = signToken({ sub: user.id, email: user.email, username: user.username });
-  return { token, user: { id: user.id, username: user.username, email: user.email, created_at: user.created_at, updated_at: user.updated_at } };
+  return { token, user: toAuthUser(user) };
 }

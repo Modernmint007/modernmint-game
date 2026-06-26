@@ -3,7 +3,7 @@
  * Uses the shared `request` helper from lib/api.ts and injects the auth token.
  */
 
-import { request } from "@/lib/api";
+import { request, API_BASE_URL } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 import type {
   GameRoom,
@@ -36,6 +36,7 @@ interface PlayerSlotResponse {
   name?:    string;
   status?:  "online" | "away";
   userId?:  string;
+  profileImageUrl?: string;   // backend returns a relative serve path
 }
 
 // ── Normalise backend response → frontend GameRoom ─────────────────────────
@@ -44,8 +45,15 @@ function toGameRoom(r: RoomResponse): GameRoom {
   function toSlot(s: PlayerSlotResponse): PlayerSlot {
     if (s.kind === "open") return { kind: "open" };
     if (s.kind === "ai")   return { kind: "ai",    avatarId: s.avatarId, name: s.name };
-    // "you" and "human" both map to human slot shape; kind passes through
-    return { kind: s.kind as "you" | "human", avatarId: s.avatarId, name: s.name, status: s.status };
+    // "you" and "human" both map to human slot shape; kind passes through.
+    // Resolve the relative profile-image path to an absolute URL for <img src>.
+    return {
+      kind: s.kind as "you" | "human",
+      avatarId: s.avatarId,
+      name: s.name,
+      status: s.status,
+      profileImageUrl: s.profileImageUrl ? `${API_BASE_URL}${s.profileImageUrl}` : undefined,
+    };
   }
 
   return {

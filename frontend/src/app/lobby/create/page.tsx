@@ -50,39 +50,69 @@ const DIFFICULTY_OPTIONS: { label: string; value: AIDifficulty; color: string }[
   { label: "Super Hard", value: "unfair", color: "#ef4444" },
 ];
 
+// Selected → Modern Mint green treatment (matches the Mode cards);
+// unselected → gold border/text, with a gold glow on hover.
+const DIFF_GREEN = "#22c462";
+const DIFF_GOLD  = "#d4a843";
+
 function DifficultyToggle({
   label,
-  color,
   active,
   onSelect,
 }: {
   label: string;
-  color: string;
   active: boolean;
   onSelect: () => void;
 }) {
+  const [hovered, setHovered] = useState(false);
+
   return (
     <button
       onClick={onSelect}
-      className="flex items-center justify-between w-full py-2 px-1 cursor-pointer transition-all"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="flex items-center justify-between w-full py-2 px-3 rounded-lg cursor-pointer"
+      style={{
+        // Minimal, premium look: unselected rows are quiet (subtle dark, no border/glow),
+        // hover gently brings in the gold, selected is an elegant green with a soft gold
+        // influence — no strong neon.
+        background: active
+          ? "rgba(34,196,98,0.10)"
+          : hovered
+          ? "rgba(212,168,67,0.06)"
+          : "rgba(8,20,14,0.35)",
+        border: `1.5px solid ${
+          active
+            ? "rgba(43,214,115,0.55)"
+            : hovered
+            ? "rgba(212,168,67,0.55)"
+            : "transparent"
+        }`,
+        boxShadow: active
+          ? "inset 0 0 0 1px rgba(212,168,67,0.18), 0 0 10px rgba(34,196,98,0.15)"
+          : hovered
+          ? "0 0 12px rgba(212,168,67,0.22)"
+          : "none",
+        transition: "all 0.18s",
+      }}
     >
-      {/* Label */}
+      {/* Label — white when selected, muted gold otherwise (full gold on hover) */}
       <span
         className="text-sm font-bold tracking-wide"
-        style={{ color: active ? "#ffffff" : "rgba(200,220,210,0.55)" }}
+        style={{ color: active ? "#ffffff" : hovered ? DIFF_GOLD : "rgba(212,168,67,0.72)" }}
       >
         {label}
       </span>
 
-      {/* Toggle pill */}
+      {/* Toggle pill — green when active */}
       <div
         className="relative flex-shrink-0 rounded-full transition-all duration-200"
         style={{
           width: 44,
           height: 22,
-          background: active ? color : "rgba(255,255,255,0.10)",
-          border: `1.5px solid ${active ? color : "rgba(255,255,255,0.15)"}`,
-          boxShadow: active ? `0 0 10px ${color}66` : "none",
+          background: active ? DIFF_GREEN : "rgba(255,255,255,0.10)",
+          border: `1.5px solid ${active ? DIFF_GREEN : "rgba(255,255,255,0.15)"}`,
+          boxShadow: active ? `0 0 10px ${DIFF_GREEN}66` : "none",
         }}
       >
         <motion.div
@@ -387,12 +417,11 @@ export default function CreateGamePage() {
               {/* Difficulty (left) */}
               <div>
                 <PanelLabel>Difficulty Level</PanelLabel>
-                <div className="flex flex-col">
+                <div className="flex flex-col gap-1.5">
                   {DIFFICULTY_OPTIONS.map((opt) => (
                     <DifficultyToggle
                       key={opt.value}
                       label={opt.label}
-                      color={opt.color}
                       active={difficulty === opt.value}
                       onSelect={() => setDifficulty(opt.value)}
                     />

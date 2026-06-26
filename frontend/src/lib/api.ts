@@ -7,6 +7,9 @@ const BASE_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5000"
 ).replace(/\/$/, "");
 
+/** Public API base, e.g. for building absolute <img> URLs to served avatars. */
+export const API_BASE_URL = BASE_URL;
+
 // ── Generic fetch wrapper ──────────────────────────────────────────────────
 
 interface ApiOptions extends RequestInit {
@@ -53,6 +56,8 @@ export interface AuthPayload {
     id: string;
     username: string;
     email: string;
+    // Versioned serve URL (or null) — built by the backend, not raw base64.
+    profile_image_url: string | null;
   };
 }
 
@@ -75,6 +80,19 @@ export const authApi = {
     return request<AuthPayload>("/api/auth/login", {
       method: "POST",
       body: JSON.stringify(body),
+    });
+  },
+};
+
+// ── User endpoints ─────────────────────────────────────────────────────────
+
+export const usersApi = {
+  /** Upload/replace the signed-in user's profile image (base64 data URL). */
+  updateProfileImage(image: string, token: string): Promise<{ profileImageUrl: string }> {
+    return request<{ profileImageUrl: string }>("/api/users/me/profile-image", {
+      method: "PUT",
+      body: JSON.stringify({ image }),
+      token,
     });
   },
 };

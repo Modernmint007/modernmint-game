@@ -38,6 +38,12 @@ export interface RoomPlayerRow {
   joined_at:    Date;
 }
 
+/** room_players LEFT JOINed with users — adds the player's profile-image info. */
+export interface RoomPlayerJoinedRow extends RoomPlayerRow {
+  profile_image_url: string | null;
+  user_updated_at:   Date | null;
+}
+
 // ── API request bodies ─────────────────────────────────────────────────────
 
 export interface CreateRoomBody {
@@ -72,6 +78,9 @@ export interface PlayerSlotResponse {
   name?:    string;
   status?:  "online" | "away";
   userId?:  string;
+  // Display-only: a small versioned URL to the player's profile image, when set.
+  // Absent → the frontend falls back to the avatarId game-avatar system.
+  profileImageUrl?: string;
 }
 
 export interface RoomResponse {

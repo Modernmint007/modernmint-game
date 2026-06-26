@@ -11,6 +11,8 @@ export interface StoredUser {
   id: string;
   username: string;
   email: string;
+  // Versioned serve URL to the user's profile image (or null/absent).
+  profile_image_url?: string | null;
 }
 
 export function setSession(token: string, user: StoredUser): void {
@@ -32,6 +34,13 @@ export function getUser(): StoredUser | null {
 export function clearSession(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
+}
+
+/** Update just the stored user's profile image URL (after an upload). */
+export function setStoredProfileImage(profileImageUrl: string | null): void {
+  const user = getUser();
+  if (!user) return;
+  localStorage.setItem(USER_KEY, JSON.stringify({ ...user, profile_image_url: profileImageUrl }));
 }
 
 export function isAuthenticated(): boolean {

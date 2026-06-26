@@ -7,13 +7,17 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";  -- provides gen_random_uuid()
 
 -- ── Users ─────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS users (
-  id            UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
-  username      VARCHAR(50)   UNIQUE NOT NULL,
-  email         VARCHAR(255)  UNIQUE NOT NULL,
-  password_hash VARCHAR(255)  NOT NULL,
-  created_at    TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
-  updated_at    TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+  id                UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+  username          VARCHAR(50)   UNIQUE NOT NULL,
+  email             VARCHAR(255)  UNIQUE NOT NULL,
+  password_hash     VARCHAR(255)  NOT NULL,
+  profile_image_url TEXT,
+  created_at        TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
+
+-- Existing databases: add the column idempotently (matches runMigrations()).
+ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_url TEXT;
 
 -- Auto-update updated_at on row changes
 CREATE OR REPLACE FUNCTION set_updated_at()

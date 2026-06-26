@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import PlayerAvatar from "./PlayerAvatar";
-import { AVATAR_IMAGE_BY_ID } from "@/lib/lobby/types";
 import type { GameRoom } from "@/lib/lobby/types";
 
 // ── Mode badge ────────────────────────────────────────────────────────────
@@ -35,17 +34,17 @@ function SlotGroup({ slots }: { slots: GameRoom["founders"] }) {
   return (
     <div className="flex items-center gap-1">
       {slots.map((slot, i) => {
-        // A joined human/you player shows the avatar image they selected on the
-        // join page; open slots keep the "+" placeholder, AI keeps the bot icon.
+        // Human/you slot represents the PERSON: profile photo when they have one,
+        // otherwise their name initials (same as the navbar). Open slots keep "+",
+        // AI keeps the bot icon. Game avatar is no longer used for display here.
         const isPlayer = slot.kind === "human" || slot.kind === "you";
-        const imageSrc =
-          isPlayer && slot.avatarId ? AVATAR_IMAGE_BY_ID[slot.avatarId] : undefined;
         return (
           <PlayerAvatar
             key={i}
             kind={slot.kind}
             avatarId={slot.avatarId}
-            imageSrc={imageSrc}
+            imageSrc={isPlayer ? slot.profileImageUrl : undefined}
+            personName={isPlayer ? (slot.name ?? "") : undefined}
             size="sm"
             showStatus={slot.status === "online"}
           />

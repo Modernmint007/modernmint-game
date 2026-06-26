@@ -276,8 +276,8 @@ export default function JoinGamePage({
                   <PanelLabel>Choose Your Avatar</PanelLabel>
                 </div>
 
-                {/* Role-specific avatar grid */}
-                <div className="grid grid-cols-2 gap-6">
+                {/* Role-specific avatar grid — founders 2×2, investors stacked vertically */}
+                <div className={`grid gap-6 ${role === "investor" ? "grid-cols-1" : "grid-cols-2"}`}>
                   {avatars.map((a) => {
                     const active = avatarId === a.id;
                     return (

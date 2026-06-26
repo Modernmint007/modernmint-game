@@ -3,6 +3,7 @@
 import { clsx } from "clsx";
 import { AVATARS } from "@/lib/lobby/types";
 import type { SlotKind } from "@/lib/lobby/types";
+import PersonAvatar, { personInitials } from "./PersonAvatar";
 
 interface PlayerAvatarProps {
   kind:      SlotKind;
@@ -12,6 +13,9 @@ interface PlayerAvatarProps {
   selected?: boolean;
   onClick?:  () => void;
   imageSrc?: string;   // when set, a joined player's selected avatar image is shown
+  // When set (lobby), the slot represents the PERSON: profile photo, else name
+  // initials (like the navbar) — never the game avatar.
+  personName?: string;
 }
 
 const sizes = {
@@ -67,6 +71,7 @@ export default function PlayerAvatar({
   selected = false,
   onClick,
   imageSrc,
+  personName,
 }: PlayerAvatarProps) {
   const s    = sizes[size];
   const dim  = s.outer;
@@ -136,36 +141,42 @@ export default function PlayerAvatar({
   // ── Human / You slot ──
   return (
     <div className="relative flex-shrink-0">
-      <div
-        role={onClick ? "button" : undefined}
-        tabIndex={onClick ? 0 : undefined}
-        onClick={onClick}
-        className={clsx(
-          "rounded-full flex items-center justify-center flex-shrink-0 font-black select-none",
-          onClick && "cursor-pointer",
-          "transition-all duration-150"
-        )}
-        style={{
-          width: dim,
-          height: dim,
-          overflow: "hidden",
-          background: imageSrc
-            ? "#04190d"
-            : `radial-gradient(circle at 35% 35%, ${avt.accent}33, ${avt.bg})`,
-          border: selected
-            ? `2px solid ${avt.accent}`
-            : `1.5px solid ${avt.accent}44`,
-          boxShadow: selected ? `0 0 12px ${avt.accent}66` : undefined,
-          color: avt.accent,
-        }}
-      >
-        {imageSrc ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageSrc} alt="" className="w-full h-full object-cover" />
-        ) : (
-          <span className={s.text}>{avt.initials}</span>
-        )}
-      </div>
+      {personName !== undefined ? (
+        // Lobby: represent the person — profile photo, else name initials.
+        <PersonAvatar src={imageSrc} initials={personInitials(personName)} size={dim} borderWidth={1.5} />
+      ) : (
+        // Create page: keep the selected game-avatar representation.
+        <div
+          role={onClick ? "button" : undefined}
+          tabIndex={onClick ? 0 : undefined}
+          onClick={onClick}
+          className={clsx(
+            "rounded-full flex items-center justify-center flex-shrink-0 font-black select-none",
+            onClick && "cursor-pointer",
+            "transition-all duration-150"
+          )}
+          style={{
+            width: dim,
+            height: dim,
+            overflow: "hidden",
+            background: imageSrc
+              ? "#04190d"
+              : `radial-gradient(circle at 35% 35%, ${avt.accent}33, ${avt.bg})`,
+            border: selected
+              ? `2px solid ${avt.accent}`
+              : `1.5px solid ${avt.accent}44`,
+            boxShadow: selected ? `0 0 12px ${avt.accent}66` : undefined,
+            color: avt.accent,
+          }}
+        >
+          {imageSrc ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={imageSrc} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <span className={s.text}>{avt.initials}</span>
+          )}
+        </div>
+      )}
 
       {/* Online status dot */}
       {showStatus && (
